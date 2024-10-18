@@ -14,6 +14,7 @@ export default defineSchema({
     }),
 
     updatedAt: v.string(),
+    timezone: v.optional(v.string()),
   }).index("by_clerkUserId", ["clerkUserId"]),
 
   schedule: defineTable({
@@ -25,7 +26,7 @@ export default defineSchema({
 
         // This is a time string in the format of "HH:mm"
         time: v.array(v.object({ startTime: v.string(), endTime: v.string() })),
-      })
+      }),
     ),
     updatedAt: v.string(),
   }).index("by_clerkUserId", ["clerkUserId"]),
@@ -41,6 +42,7 @@ export default defineSchema({
     endTime: v.string(),
 
     googleCalendarEventId: v.string(),
+    htmllink: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 
   user: defineTable({

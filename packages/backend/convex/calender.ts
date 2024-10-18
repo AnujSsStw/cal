@@ -28,7 +28,7 @@ export const create = action({
       additionalInfo,
       startTime,
       eventName,
-    }
+    },
   ) => {
     const clerkClient = createClerkClient({
       secretKey: process.env.CLERK_SECRET_KEY,
@@ -65,7 +65,7 @@ export const create = action({
           end: {
             dateTime: addMinutes(
               new Date(startTime),
-              durationInMinutes
+              durationInMinutes,
             ).toISOString(),
           },
           summary: `${name} + ${calendarUser.fullName}: ${eventName}`,
@@ -81,6 +81,7 @@ export const create = action({
         name,
         startTime: calendarEvnent.data.start?.dateTime as string,
         userId: clerkId,
+        htmlLink: calendarEvnent.data.htmlLink,
       });
 
       return calendarEvnent.data;
@@ -127,7 +128,7 @@ async function getOAuthClient(clerkUserId: string, clerkClient: ClerkClient) {
   try {
     const token = await clerkClient.users.getUserOauthAccessToken(
       clerkUserId,
-      "oauth_google"
+      "oauth_google",
     );
 
     if (token.data.length === 0 || token.data[0].token == null) {
@@ -138,7 +139,7 @@ async function getOAuthClient(clerkUserId: string, clerkClient: ClerkClient) {
     const client = new google.auth.OAuth2(
       process.env.GOOGLE_OAUTH_CLIENT_ID,
       process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-      process.env.GOOGLE_OAUTH_REDIRECT_URL
+      process.env.GOOGLE_OAUTH_REDIRECT_URL,
     );
 
     client.setCredentials({ access_token: token.data[0].token });

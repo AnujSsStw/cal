@@ -18,6 +18,8 @@ import { api } from "@packages/backend/convex/_generated/api";
 import { Id } from "@packages/backend/convex/_generated/dataModel";
 import { DrawerDialogDemo } from "./book";
 import { EventSlugParams } from "./page";
+import { parseISO, addMinutes, format } from "date-fns";
+import { utcToZonedTime } from "date-fns-tz";
 
 export function SchedulingInterface({ params }: EventSlugParams) {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -34,6 +36,9 @@ export function SchedulingInterface({ params }: EventSlugParams) {
   });
   const [slots, setSlots] = useState<Date[]>([]);
   const [open, setOpen] = useState(false);
+  const [timeZone, setTimeZone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
 
   useEffect(() => {
     if (!event || !schedule || !bookings) return;
@@ -46,34 +51,21 @@ export function SchedulingInterface({ params }: EventSlugParams) {
     )?.time;
 
     if (!time_availability) return;
-    let a = generateTimeSlots(time_availability, event.durationInMinutes);
-
-    // Filter out the slots that are already booked
-    // const bookedSlots = bookings.filter(
-    //   (booking) =>
-    //     new Date(booking.startTime).toLocaleDateString("en-US") ===
-    //     date.toLocaleDateString("en-US")
-    // );
-
-    // a = a.filter(
-    //   (slot) =>
-    //     !bookedSlots.some(
-    //       (booking) =>
-    //         new Date(booking.startTime).toLocaleTimeString("en-US", {
-    //           hour: "numeric",
-    //           minute: "numeric",
-    //         }) ===
-    //         slot.toLocaleTimeString("en-US", {
-    //           hour: "numeric",
-    //           minute: "numeric",
-    //         })
-    //     )
-    // );
+    let a = generateTimeSlots(
+      time_availability,
+      event.durationInMinutes,
+      timeZone,
+    );
 
     setSlots(a);
-  }, [date]);
+  }, [date, timeZone]);
 
-  if (!event || !schedule || !user) return null;
+  if (!event || !schedule || !user)
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <img src="https://i.cdn.turner.com/adultswim/big/img/2018/04/20/eye.gif" />
+      </div>
+    );
 
   return (
     <div className="flex bg-gray-100 border  rounded-lg shadow-lg">
@@ -137,20 +129,24 @@ export function SchedulingInterface({ params }: EventSlugParams) {
             />
 
             {/* Time Zone Selector */}
-            <Select>
+
+            <Select
+              onValueChange={(value) => {
+                setTimeZone(value);
+              }}
+              value={timeZone}
+            >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Eastern time - US & Canada" />
+                <SelectValue
+                  placeholder={Intl.DateTimeFormat().resolvedOptions().timeZone}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="eastern">
-                  Eastern time - US & Canada
-                </SelectItem>
-                <SelectItem value="central">
-                  Central time - US & Canada
-                </SelectItem>
-                <SelectItem value="pacific">
-                  Pacific time - US & Canada
-                </SelectItem>
+                {Intl.supportedValuesOf("timeZone").map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {tz}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </CardContent>
@@ -234,18 +230,25 @@ export function SchedulingInterface({ params }: EventSlugParams) {
 }
 
 function generateTimeSlots(
-  timeRanges: { startTime: any; endTime: any }[],
+  timeRanges: { startTime: string; endTime: string }[],
   durationInMinutes: number,
+  timezone: string,
 ) {
   const timeSlots: Date[] = [];
 
   timeRanges.forEach(({ startTime, endTime }) => {
-    let start = new Date(`1970-01-01T${startTime}:00`);
-    let end = new Date(`1970-01-01T${endTime}:00`);
+    // Parse start and end times in the specified timezone
+    const start = utcToZonedTime(
+      parseISO(`1970-01-01T${startTime}:00`),
+      timezone,
+    );
+    const end = utcToZonedTime(parseISO(`1970-01-01T${endTime}:00`), timezone);
 
-    while (start < end) {
-      timeSlots.push(new Date(start));
-      start = new Date(start.getTime() + durationInMinutes * 60000);
+    let current = start;
+
+    while (current < end) {
+      timeSlots.push(new Date(current)); // Store the slot as a Date
+      current = addMinutes(current, durationInMinutes); // Add duration to the current time
     }
   });
 

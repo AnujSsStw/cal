@@ -16,6 +16,7 @@ export const m = internalMutation({
     startTime: v.string(),
     endTime: v.string(),
     googleCalendarEventId: v.string(),
+    htmlLink: v.optional(v.string()),
   },
   handler: async (
     ctx,
@@ -28,7 +29,8 @@ export const m = internalMutation({
       startTime,
       endTime,
       googleCalendarEventId,
-    }
+      htmlLink,
+    },
   ) => {
     await ctx.db.insert("booking", {
       eventId,
@@ -39,6 +41,7 @@ export const m = internalMutation({
       startTime,
       endTime,
       googleCalendarEventId,
+      htmllink: htmlLink,
     });
   },
 });
@@ -51,10 +54,22 @@ export const getBooking = query({
       throw new Error("No user found");
     }
 
-    return await ctx.db
+    const bookings = await ctx.db
       .query("booking")
       .withIndex("by_userId", (q) => q.eq("userId", user.subject))
       .collect();
+
+    const events = await ctx.db.query("event").collect();
+
+    return bookings.map((booking) => {
+      const event = events.find((e) => e._id === booking.eventId);
+      return {
+        ...booking,
+        eventName: event?.eventName,
+        description: event?.description,
+        isActive: event?.isActive,
+      };
+    });
   },
 });
 
